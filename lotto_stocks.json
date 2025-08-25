@@ -1,0 +1,15 @@
+[
+  { "symbol": "^SET.BK", "name": "SET Index", "thai": "ดัชนีหุ้นไทย" },
+  { "symbol": "^SET50.BK", "name": "SET50 Index", "thai": "ดัชนีหุ้นไทย 50" },
+  { "symbol": "^DJI", "name": "Dow Jones Industrial Average", "thai": "ดาวโจนส์" },
+  { "symbol": "^N225", "name": "Nikkei 225", "thai": "นิเคอิ" },
+  { "symbol": "^HSI", "name": "Hang Seng Index", "thai": "ฮั่งเส็ง" },
+  { "symbol": "000001.SS", "name": "Shanghai Composite Index", "thai": "จีน" },
+  { "symbol": "^KS11", "name": "KOSPI Index", "thai": "เกาหลี" },
+  { "symbol": "^TWII", "name": "Taiwan Weighted Index", "thai": "ไต้หวัน" },
+  { "symbol": "^STI", "name": "Straits Times Index", "thai": "สิงคโปร์" },
+  { "symbol": "^BSESN", "name": "BSE SENSEX (India)", "thai": "อินเดีย" },
+  { "symbol": "IMOEX.ME", "name": "MOEX Russia Index", "thai": "รัสเซีย" },
+  { "symbol": "^FTSE", "name": "FTSE 100 Index", "thai": "อังกฤษ" },
+  { "symbol": "^GDAXI", "name": "DAX Performance Index", "thai": "เยอรมัน" }
+]

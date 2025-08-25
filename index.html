@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>หวยหุ้น & คาดการณ์</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f4f7fb; --card:#fff; --text:#1f2937; --muted:#6b7280;
+      --primary:#2563eb; --primary-600:#1d4ed8; --border:#e5e7eb;
+      --green:#16a34a; --red:#dc2626; --amber:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+    .wrap{max-width:960px;margin:40px auto;padding:0 16px}
+    .card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.06);
+      padding:24px;
+    }
+    h1{margin:0 0 16px;color:var(--text);font-size:28px}
+    .sub{color:var(--muted);margin-bottom:20px}
+    .row{display:flex;gap:12px;align-items:center;position:relative}
+    input[type="text"]{
+      flex:1;border:1px solid var(--border);border-radius:12px;
+      padding:12px 14px;font-size:16px;outline:none;
+    }
+    input[type="text"]:focus{border-color:var(--primary)}
+    button{
+      background:var(--primary);color:#fff;border:none;border-radius:12px;
+      padding:12px 18px;font-size:16px;cursor:pointer
+    }
+    button:hover{background:var(--primary-600)}
+    .dd{
+      position:absolute;top:56px;left:0;right:0;background:#fff;border:1px solid var(--border);
+      border-radius:12px;max-height:260px;overflow:auto;z-index:50;display:none
+    }
+    .dd-item{padding:10px 12px;cursor:pointer;display:flex;gap:8px}
+    .dd-item:hover{background:#f3f4f6}
+    .sym{font-weight:600;color:var(--text)}
+    .name{color:var(--muted)}
+    .thai{margin-left:auto;color:var(--amber);font-weight:600}
+    table{width:100%;border-collapse:collapse;margin-top:18px}
+    th,td{border:1px solid var(--border);padding:10px;text-align:center}
+    th{background:#f9fafb}
+    .pos{color:var(--green);font-weight:700}
+    .neg{color:var(--red);font-weight:700}
+    .lotto{font-weight:700;color:#111}
+    .muted{color:var(--muted);font-size:14px;margin-top:8px}
+    .summary{
+      margin-top:20px;padding:16px;border-radius:12px;
+      background:#f9fafb;border:1px solid var(--border);
+    }
+    .summary h3{margin:0 0 10px;color:var(--text);font-size:20px}
+    .summary ul{margin:0;padding-left:20px;color:var(--text)}
+    .summary li{margin:4px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>📊 หวยหุ้น & คาดการณ์</h1>
+      <p class="sub">พิมพ์ชื่อ/สัญลักษณ์ (ไทย/อังกฤษ) เช่น <b>ฮั่งเส็ง</b>, <b>นิเคอิ</b>, <b>^HSI</b>, <b>^N225</b></p>
+
+      <div class="row">
+        <input id="symbol" type="text" placeholder="ค้นหา: ฮั่งเส็ง / นิเคอิ / ^HSI / ^N225 ..." autocomplete="off" />
+        <button id="btn">ดึงข้อมูล</button>
+        <div id="dd" class="dd"></div>
+      </div>
+
+      <div id="out" style="margin-top:20px"></div>
+      <div class="muted">⚠️ คาดการณ์เป็นตัวอย่างเชิงสาธิตเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const symbolInput = $("symbol");
+    const dd = $("dd");
+    const btn = $("btn");
+    const out = $("out");
+    const host = 'http://127.0.0.1:5000';
+  
+    let timer;
+    symbolInput.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = symbolInput.value.trim();
+      if (!q) { dd.style.display = "none"; dd.innerHTML = ""; return; }
+      timer = setTimeout(() => doSearch(q), 200);
+    });
+  
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".row")) {
+        dd.style.display = "none";
+      }
+    });
+  
+    async function doSearch(q){
+      try{
+        const r = await fetch(`${host}/search?q=${encodeURIComponent(q)}`);
+        const data = await r.json();
+        if (!Array.isArray(data) || data.length === 0){ dd.style.display="none"; dd.innerHTML=""; return; }
+  
+        dd.innerHTML = "";
+        data.forEach(item=>{
+          const div = document.createElement("div");
+          div.className = "dd-item";
+          div.innerHTML = `
+            <span class="sym">${item.symbol}</span>
+            <span class="name">${item.name}</span>
+            <span class="thai">${item.thai}</span>
+          `;
+          div.onclick = () => { symbolInput.value = item.symbol; dd.style.display="none"; };
+          dd.appendChild(div);
+        });
+        dd.style.display = "block";
+      }catch(e){
+        console.error(e);
+        dd.style.display="none";
+      }
+    }
+  
+    btn.onclick = getQuote;
+  
+    function fmt2(x){
+      return (Number(x)||0).toFixed(2);
+    }
+  
+    // ✅ คืนค่า top N แต่ถ้ามีจำนวนเท่ากัน จะเอามาด้วย
+    function topDigits(arr, N){
+      let counter = {};
+      arr.forEach(num=>{
+        [...num].forEach(d=>{
+          counter[d] = (counter[d]||0)+1;
+        });
+      });
+      let sorted = Object.entries(counter).sort((a,b)=>b[1]-a[1]);
+      if(sorted.length <= N) return sorted.map(([d,c])=>`${d} (${c} ครั้ง)`).join(", ");
+  
+      let result = sorted.slice(0,N);
+      let lastCount = result[result.length-1][1];
+  
+      for(let i=N;i<sorted.length;i++){
+        if(sorted[i][1] === lastCount){
+          result.push(sorted[i]);
+        }else{
+          break;
+        }
+      }
+      return result.map(([d,c])=>`${d} (${c} ครั้ง)`).join(", ");
+    }
+  
+    async function getQuote(){
+      const symbol = symbolInput.value.trim();
+      if(!symbol){ alert("กรุณาใส่สัญลักษณ์/ชื่อดัชนี"); return; }
+      btn.disabled = true; btn.textContent = "กำลังดึงข้อมูล...";
+      out.innerHTML = '';
+      try{
+        const r = await fetch(`${host}/quote?symbol=${encodeURIComponent(symbol)}`);
+        const data = await r.json();
+        if(data.error){ out.innerHTML = `<p style="color:#dc2626">${data.error}</p>`; return; }
+  
+        const chCls = data.change > 0 ? "pos" : (data.change < 0 ? "neg" : "");
+        let html = `
+          <table>
+            <tr>
+              <th>ราคา</th>
+              <th>เปลี่ยนแปลง</th>
+              <th>3 ตัวบน</th>
+              <th>2 ตัวบน</th>
+              <th>2 ตัวล่าง</th>
+            </tr>
+            <tr>
+              <td>${fmt2(data.price)}</td>
+              <td class="${chCls}">${fmt2(data.change)} (${fmt2(data.percentChange)}%)</td>
+              <td class="lotto">${data.lotto.threeTop}</td>
+              <td class="lotto">${data.lotto.twoTop}</td>
+              <td class="lotto">${data.lotto.twoBottom}</td>
+            </tr>
+        `;
+  
+        let allLotto = {
+          threeTop: [data.lotto.threeTop],
+          twoTop: [data.lotto.twoTop],
+          twoBottom: [data.lotto.twoBottom]
+        };
+  
+        const order = ['5m','10m','15m','20m','25m','30m'];
+        order.forEach(k=>{
+          if(!data.forecast[k]) return;
+          const f = data.forecast[k];
+          const cls = f.change > 0 ? "pos" : (f.change < 0 ? "neg" : "");
+          html += `
+            <tr>
+              <td>${fmt2(f.price)}</td>
+              <td class="${cls}">${fmt2(f.change)} (${fmt2(f.percentChange)}%)</td>
+              <td class="lotto">${f.lotto.threeTop}</td>
+              <td class="lotto">${f.lotto.twoTop}</td>
+              <td class="lotto">${f.lotto.twoBottom}</td>
+            </tr>
+          `;
+          allLotto.threeTop.push(f.lotto.threeTop);
+          allLotto.twoTop.push(f.lotto.twoTop);
+          allLotto.twoBottom.push(f.lotto.twoBottom);
+        });
+  
+        html += `</table>`;
+  
+        // ✅ สรุปความน่าจะเป็น (3 ตัวเอา 3 อันดับ, 2 ตัวเอา 2 อันดับ + ties)
+        html += `
+          <div class="summary" style="margin-top:20px;text-align:left">
+            <h3>🔮 สรุปความน่าจะเป็น</h3>
+            <b>3 ตัวบน:</b> ${topDigits(allLotto.threeTop, 3)}<br/>
+            <b>2 ตัวบน:</b> ${topDigits(allLotto.twoTop, 2)}<br/>
+            <b>2 ตัวล่าง:</b> ${topDigits(allLotto.twoBottom, 2)}
+          </div>
+        `;
+  
+        out.innerHTML = html;
+  
+      }catch(e){
+        console.error(e);
+        out.innerHTML = `<p style="color:#dc2626">เกิดข้อผิดพลาด: ${e.message}</p>`;
+      }finally{
+        btn.disabled = false; btn.textContent = "ดึงข้อมูล";
+      }
+    }
+  </script>
+  
+  
+  
+  
+</body>
+</html>
